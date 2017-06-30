@@ -2,13 +2,83 @@
 #include <sstream>
 #include <fstream>
 
+#include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
 
-//g++ -lreadline -L/usr/local/Cellar/readline/7.0.1/lib -I/usr/local/Cellar/readline/7.0.1/include -Wall -Wextra -pedantic /var/tmp/lesli.cpp
+#define ALPHABET_SIZE 26
+
+#define CHAR_TO_INDEX(c) ((int)c - (int)'a')
+
+
+struct TrieNode {
+  struct TrieNode *children[ALPHABET_SIZE];
+  bool isLeaf;
+};
+
+struct TrieNode *newNode() {
+  struct TrieNode *pNode = NULL;
+  pNode = (struct TrieNode *) malloc(sizeof(struct TrieNode));
+
+  if (pNode) {
+    pNode->isLeaf = false;
+
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+      pNode->children[i] = NULL;
+    }
+  }
+
+  return pNode;
+}
+
+void insert(struct TrieNode *root, const char *key) {
+  int level;
+  int length = strlen(key);
+  int index;
+
+  struct TrieNode *pCrawl = root;
+
+  for (level = 0; level < length; level++) {
+    index = CHAR_TO_INDEX(key[level]);
+
+    if (!pCrawl->children[index]) {
+      pCrawl->children[index] = newNode();
+    }
+
+    pCrawl = pCrawl->children[index];
+  }
+
+  pCrawl->isLeaf = true;
+}
+
+bool search(struct TrieNode *root, const char *key) {
+  int level;
+  int length = strlen(key);
+  int index;
+
+  struct TrieNode *pCrawl = root;
+
+  for (level = 0; level < length; level++) {
+    index = CHAR_TO_INDEX(key[level]);
+
+    if (!pCrawl->children[index]) {
+      return false;
+    }
+
+    pCrawl = pCrawl->children[index];
+  }
+
+  return (pCrawl != NULL && pCrawl->isLeaf);
+}
+
+void lcString(char *str) {
+  for (; *str; str++) *str = tolower(*str);
+}
+
 
 int main() {
   std::ifstream infile("/Users/max/Desktop/links.org");
@@ -16,9 +86,19 @@ int main() {
   std::string line;
   std::string prefix("* ");
 
+  struct TrieNode *root = newNode();
+
   while (std::getline(infile, line)) {
-    if (std::equal(prefix.begin(), prefix.end(), line.begin())) {
-      printf("> detected headline: %s\n", line.c_str());
+    const char *ptr = strstr(line.c_str(), prefix.c_str());
+
+    if (ptr != NULL) {
+      char *headline = strdup(ptr + prefix.length()); // @FIXME free
+      lcString(headline); // @FIXME trie structure can only work with lowercase chars
+
+      printf("> detected headline: |%s|\n", headline);
+
+      insert(root, headline);
+      assert(search(root, headline) == true && "Failed to find inserted headline in trie");
     }
   }
 
