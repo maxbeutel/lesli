@@ -2,6 +2,7 @@
 #include <sstream>
 #include <fstream>
 
+#include <vector>
 #include <assert.h>
 
 #include <stdio.h>
@@ -13,7 +14,9 @@
 #define ALPHABET_SIZE 26
 
 #define CHAR_TO_INDEX(c) ((int)c - (int)'a')
+#define INDEX_TO_CHAR(c) ((int)'a' + (int)c)
 
+size_t MAX_KEY_LEN = 0;
 
 struct TrieNode {
   struct TrieNode *children[ALPHABET_SIZE];
@@ -39,6 +42,10 @@ void insert(struct TrieNode *root, const char *key) {
   int level;
   int length = strlen(key);
   int index;
+
+  if ((size_t) length > MAX_KEY_LEN) { // @FIXME so bad cast
+    MAX_KEY_LEN = length;
+  }
 
   struct TrieNode *pCrawl = root;
 
@@ -72,7 +79,31 @@ bool search(struct TrieNode *root, const char *key) {
     pCrawl = pCrawl->children[index];
   }
 
-  return (pCrawl != NULL && pCrawl->isLeaf);
+  return (pCrawl != NULL); // add  && pCrawl->isLeaf to only get full matches, not only prefixes
+}
+
+void walk(struct TrieNode *root, std::vector<char>& a, std::vector<std::string>& b) {
+  // sigh, really need a iterable container here
+  for (int i = 0; i < ALPHABET_SIZE; i++) {
+    struct TrieNode *tmp = root->children[i];
+
+    if (tmp == NULL) {
+      continue;
+    }
+
+    //printf("%c", INDEX_TO_CHAR(i));
+    a.push_back(INDEX_TO_CHAR(i));
+    walk(tmp, a, b);
+  }
+
+  if (root->isLeaf) {
+    std::string curKey(a.begin(), a.end());
+    a.clear();
+
+    printf("%zu %s\n", a.size(), curKey.c_str());
+
+    b.push_back(curKey);
+  }
 }
 
 void lcString(char *str) {
@@ -98,9 +129,36 @@ int main() {
       printf("> detected headline: |%s|\n", headline);
 
       insert(root, headline);
+
       assert(search(root, headline) == true && "Failed to find inserted headline in trie");
     }
   }
+
+  // testing
+  std::vector<char> a;
+  std::vector<std::string> b;
+
+  walk(root, a, b); // b contains now all words (@FIXME whitespaces are replaced with t though)
+
+  if (search(root, "xx")) {
+    printf("xx - Ok\n");
+  } else {
+    printf("xx - Not found\n");
+  }
+
+
+  if (search(root, "sin")) {
+    printf("sin - Ok\n");
+  } else {
+    printf("sin - Not found\n");
+  }
+
+  if (search(root, "singapore")) {
+    printf("singapore - Ok\n");
+  } else {
+    printf("singapore - Not found\n");
+  }
+  // end
 
   return 0;
 }
