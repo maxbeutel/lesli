@@ -62,6 +62,9 @@ void insert(struct TrieNode *root, const char *key) {
   pCrawl->isLeaf = true;
 }
 
+// @TODO how to autocomplete when the user entered for example the first 2 characters?
+//       add tests (maybe minunit)
+
 bool search(struct TrieNode *root, const char *key) {
   int level;
   int length = strlen(key);
@@ -82,6 +85,43 @@ bool search(struct TrieNode *root, const char *key) {
   return (pCrawl != NULL); // add  && pCrawl->isLeaf to only get full matches, not only prefixes
 }
 
+void walk(struct TrieNode *root, std::vector<char>& a, std::vector<std::string>& b);
+
+void completion(struct TrieNode *root, const char *key)
+{
+  int level;
+  int length = strlen(key);
+  int index;
+
+  struct TrieNode *pCrawl = root;
+
+  //  std::vector<char> tmp;
+
+  for (level = 0; level < length; level++) {
+    index = CHAR_TO_INDEX(key[level]);
+
+    if (!pCrawl->children[index]) {
+      break;
+    }
+
+    if (level == length - 1) {
+      for (int j = 0; j < ALPHABET_SIZE; j++) {
+        if (pCrawl->children[j] != NULL) {
+          printf(">> Possible completions for %s\n", key);
+
+          std::vector<char> a;
+          std::vector<std::string> b;
+
+          walk(pCrawl->children[j], a, b); // b contains now all words (@FIXME whitespaces are replaced with t though)
+        }
+      }
+    }
+
+    pCrawl = pCrawl->children[index];
+
+  }
+}
+
 void walk(struct TrieNode *root, std::vector<char>& a, std::vector<std::string>& b) {
   // sigh, really need a iterable container here
   for (int i = 0; i < ALPHABET_SIZE; i++) {
@@ -94,14 +134,13 @@ void walk(struct TrieNode *root, std::vector<char>& a, std::vector<std::string>&
     //printf("%c", INDEX_TO_CHAR(i));
     a.push_back(INDEX_TO_CHAR(i));
     walk(tmp, a, b);
+    a.pop_back();
   }
 
   if (root->isLeaf) {
     std::string curKey(a.begin(), a.end());
-    a.clear();
 
-    printf("%zu %s\n", a.size(), curKey.c_str());
-
+    printf("%s\n", curKey.c_str());
     b.push_back(curKey);
   }
 }
@@ -119,46 +158,54 @@ int main() {
 
   struct TrieNode *root = newNode();
 
-  while (std::getline(infile, line)) {
-    const char *ptr = strstr(line.c_str(), prefix.c_str());
+  insert(root, "singapore");
+  insert(root, "sincity");
+  insert(root, "sinister");
 
-    if (ptr != NULL) {
-      char *headline = strdup(ptr + prefix.length()); // @FIXME free
-      lcString(headline); // @FIXME trie structure can only work with lowercase chars
+  completion(root, "sin");
 
-      printf("> detected headline: |%s|\n", headline);
+  // printf("=========\n");
 
-      insert(root, headline);
+  // while (std::getline(infile, line)) {
+  //   const char *ptr = strstr(line.c_str(), prefix.c_str());
 
-      assert(search(root, headline) == true && "Failed to find inserted headline in trie");
-    }
-  }
+  //   if (ptr != NULL) {
+  //     char *headline = strdup(ptr + prefix.length()); // @FIXME free
+  //     lcString(headline); // @FIXME trie structure can only work with lowercase chars
 
-  // testing
-  std::vector<char> a;
-  std::vector<std::string> b;
+  //     printf("> detected headline: |%s|\n", headline);
 
-  walk(root, a, b); // b contains now all words (@FIXME whitespaces are replaced with t though)
+  //     insert(root, headline);
 
-  if (search(root, "xx")) {
-    printf("xx - Ok\n");
-  } else {
-    printf("xx - Not found\n");
-  }
+  //     assert(search(root, headline) == true && "Failed to find inserted headline in trie");
+  //   }
+  // }
+
+  // // testing
+  // std::vector<char> a;
+  // std::vector<std::string> b;
+
+  // walk(root, a, b); // b contains now all words (@FIXME whitespaces are replaced with t though)
+
+  // if (search(root, "xx")) {
+  //   printf("xx - Ok\n");
+  // } else {
+  //   printf("xx - Not found\n");
+  // }
 
 
-  if (search(root, "sin")) {
-    printf("sin - Ok\n");
-  } else {
-    printf("sin - Not found\n");
-  }
+  // if (search(root, "sin")) {
+  //   printf("sin - Ok\n");
+  // } else {
+  //   printf("sin - Not found\n");
+  // }
 
-  if (search(root, "singapore")) {
-    printf("singapore - Ok\n");
-  } else {
-    printf("singapore - Not found\n");
-  }
-  // end
+  // if (search(root, "singapore")) {
+  //   printf("singapore - Ok\n");
+  // } else {
+  //   printf("singapore - Not found\n");
+  // }
+  // // end
 
   return 0;
 }
