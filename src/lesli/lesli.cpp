@@ -1,310 +1,65 @@
-#include <string>
-#include <sstream>
-#include <fstream>
-
-#include <vector>
-#include <assert.h>
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <readline/readline.h>
-#include <readline/history.h>
 
+#include <lesli/trie.hpp>
 
-#define ALPHABET_SIZE 26
+char **character_name_completion(const char *, int, int);
+char *character_name_generator(const char *, int);
 
-#define CHAR_TO_INDEX(c) ((int)c - (int)'a')
-#define INDEX_TO_CHAR(c) ((int)'a' + (int)c)
+struct TrieNode *root = newNode();
 
-size_t MAX_KEY_LEN = 0;
-
-struct TrieNode {
-  struct TrieNode *children[ALPHABET_SIZE];
-  bool isLeaf;
-};
-
-struct TrieNode *newNode() {
-  struct TrieNode *pNode = NULL;
-  pNode = (struct TrieNode *) malloc(sizeof(struct TrieNode));
-
-  if (pNode) {
-    pNode->isLeaf = false;
-
-    for (int i = 0; i < ALPHABET_SIZE; i++) {
-      pNode->children[i] = NULL;
-    }
-  }
-
-  return pNode;
-}
-
-void insert(struct TrieNode *root, const char *key) {
-  int level;
-  int length = strlen(key);
-  int index;
-
-  if ((size_t) length > MAX_KEY_LEN) { // @FIXME so bad cast
-    MAX_KEY_LEN = length;
-  }
-
-  struct TrieNode *pCrawl = root;
-
-  for (level = 0; level < length; level++) {
-    index = CHAR_TO_INDEX(key[level]);
-
-    if (!pCrawl->children[index]) {
-      pCrawl->children[index] = newNode();
-    }
-
-    pCrawl = pCrawl->children[index];
-  }
-
-  pCrawl->isLeaf = true;
-}
-
-// @TODO how to autocomplete when the user entered for example the first 2 characters?
-//       add tests (maybe minunit)
-
-bool search(struct TrieNode *root, const char *key) {
-  int level;
-  int length = strlen(key);
-  int index;
-
-  struct TrieNode *pCrawl = root;
-
-  for (level = 0; level < length; level++) {
-    index = CHAR_TO_INDEX(key[level]);
-
-    if (!pCrawl->children[index]) {
-      return false;
-    }
-
-    pCrawl = pCrawl->children[index];
-  }
-
-  return (pCrawl != NULL); // add  && pCrawl->isLeaf to only get full matches, not only prefixes
-}
-
-void walk(struct TrieNode *root, std::vector<char>& a, std::vector<std::string>& b);
-
-void completion(struct TrieNode *root, const char *key)
-{
-  int level;
-  int length = strlen(key);
-  int index;
-
-  struct TrieNode *pCrawl = root;
-
-  //  std::vector<char> tmp;
-
-  for (level = 0; level < length; level++) {
-    index = CHAR_TO_INDEX(key[level]);
-
-    if (!pCrawl->children[index]) {
-      break;
-    }
-
-    if (level == length - 1) {
-      for (int j = 0; j < ALPHABET_SIZE; j++) {
-        if (pCrawl->children[j] != NULL) {
-          printf(">> Possible completions for %s\n", key);
-
-          std::vector<char> a;
-          std::vector<std::string> b;
-
-          walk(pCrawl->children[j], a, b); // b contains now all words (@FIXME whitespaces are replaced with t though)
-        }
-      }
-    }
-
-    pCrawl = pCrawl->children[index];
-
-  }
-}
-
-void walk(struct TrieNode *root, std::vector<char>& a, std::vector<std::string>& b) {
-  // sigh, really need a iterable container here
-  for (int i = 0; i < ALPHABET_SIZE; i++) {
-    struct TrieNode *tmp = root->children[i];
-
-    if (tmp == NULL) {
-      continue;
-    }
-
-    //printf("%c", INDEX_TO_CHAR(i));
-    a.push_back(INDEX_TO_CHAR(i));
-    walk(tmp, a, b);
-    a.pop_back();
-  }
-
-  if (root->isLeaf) {
-    std::string curKey(a.begin(), a.end());
-
-    printf("%s\n", curKey.c_str());
-    b.push_back(curKey);
-  }
-}
-
-void lcString(char *str) {
-  for (; *str; str++) *str = tolower(*str);
-}
-
-
-int main() {
-  std::ifstream infile("/Users/max/Desktop/links.org");
-
-  std::string line;
-  std::string prefix("* ");
-
-  struct TrieNode *root = newNode();
-
+int main(void) {
+  // prepare trie lookup
   insert(root, "singapore");
   insert(root, "sincity");
   insert(root, "sinister");
+  insert(root, "somethingelse");
 
-  completion(root, "sin");
+  // @FIXME free :-)
 
-  // printf("=========\n");
+  // setup autocomplete
+  char *buf = NULL;
+  rl_attempted_completion_function = character_name_completion;
 
-  // while (std::getline(infile, line)) {
-  //   const char *ptr = strstr(line.c_str(), prefix.c_str());
+  while ((buf = readline("\n> ")) != NULL) {
+    rl_bind_key('\t', rl_complete);
+    printf("\ngot cmd [%s]\n", buf);
+  }
 
-  //   if (ptr != NULL) {
-  //     char *headline = strdup(ptr + prefix.length()); // @FIXME free
-  //     lcString(headline); // @FIXME trie structure can only work with lowercase chars
-
-  //     printf("> detected headline: |%s|\n", headline);
-
-  //     insert(root, headline);
-
-  //     assert(search(root, headline) == true && "Failed to find inserted headline in trie");
-  //   }
-  // }
-
-  // // testing
-  // std::vector<char> a;
-  // std::vector<std::string> b;
-
-  // walk(root, a, b); // b contains now all words (@FIXME whitespaces are replaced with t though)
-
-  // if (search(root, "xx")) {
-  //   printf("xx - Ok\n");
-  // } else {
-  //   printf("xx - Not found\n");
-  // }
-
-
-  // if (search(root, "sin")) {
-  //   printf("sin - Ok\n");
-  // } else {
-  //   printf("sin - Not found\n");
-  // }
-
-  // if (search(root, "singapore")) {
-  //   printf("singapore - Ok\n");
-  // } else {
-  //   printf("singapore - Not found\n");
-  // }
-  // // end
+  free(buf);
 
   return 0;
 }
 
-// autocomplete example:
-/*
-static char** my_completion(const char*, int ,int);
-char* my_generator(const char*,int);
-char * dupstr (char*);
-void *xmalloc (int);
+char ** character_name_completion(const char *text, int, int) { // start, end
+  rl_attempted_completion_over = 1;
+  return rl_completion_matches(text, character_name_generator);
+}
 
-char* cmd [] ={ "hello", "world", "hell" ,"word", "quit", " ", "\r"};
+char *character_name_generator(const char *text, int state) {
+  static int list_index = 0, len = 0; // @FIXME should be size_t?
 
-int main()
-{
-    // http://cc.byexamples.com/2008/06/16/gnu-readline-implement-custom-auto-complete/
-    char *buf;
+  // @ FIXME not so nice to load all completions for every generator call
+  // should be only on state=0, but also needs to be truncated again
+  auto completions = completion(root, text); // use reference here?
 
-    rl_completion_append_character = '\0';
+  if (!state) {
+    list_index = 0;
+    len = strlen(text);
 
-    while((buf = readline("\n>> "))!=NULL) {
-      if (rl_attempted_completion_function) {
-        // read category
-        printf("cat [%s]\n",buf);
+    //printf("### got %lu completions\n", completions.size());
+  }
 
-        rl_bind_key('\t', NULL);
-        rl_attempted_completion_function = NULL;
+  while (list_index < completions.size()) {
+    auto name = completions[list_index];
+    list_index++;
 
-      } else {
-        // read link
-        printf("lnk [%s]\n",buf);
-
-        rl_bind_key('\t',rl_complete);
-        rl_attempted_completion_function = my_completion;
-      }
+    if (strncmp(name.c_str(), text, len) == 0) {
+      return strdup(name.c_str());
     }
+  }
 
-    free(buf);
-
-    return 0;
+  return NULL;
 }
-
-
-static char** my_completion( const char * text , int start,  int end)
-{
-    char **matches;
-
-    matches = (char **)NULL;
-
-    if (start == 0)
-        matches = rl_completion_matches ((char*)text, &my_generator);
-    else
-      rl_bind_key('\t',rl_insert);
-
-    return (matches);
-
-}
-
-char* my_generator(const char* text, int state)
-{
-    static int list_index, len;
-    char *name;
-
-    if (!state) {
-        list_index = 0;
-        len = strlen (text);
-    }
-
-    //    while (name = cmd[list_index])
-    while ((name = cmd[list_index]) && strncmp(cmd[list_index], "\r", 1) != 0)  {
-        list_index++;
-
-        if (strncmp (name, text, len) == 0)
-            return (dupstr(name));
-    }
-
-    // If no names matched, then return NULL.
-    return ((char *)NULL);
-
-}
-
-char * dupstr (char* s) {
-  char *r;
-
-  r = (char*) xmalloc ((strlen (s) + 1));
-  strcpy (r, s);
-  return (r);
-}
-
-void * xmalloc (int size)
-{
-    void *buf;
-
-    buf = malloc (size);
-    if (!buf) {
-        fprintf (stderr, "Error: Out of memory. Exiting.'n");
-        exit (1);
-    }
-
-    return buf;
-}
-*/

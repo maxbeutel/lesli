@@ -1,0 +1,110 @@
+void ac_init()
+{
+  // http://cc.byexamples.com/2008/06/16/gnu-readline-implement-custom-auto-complete/
+  // http://www.delorie.com/gnu/docs/readline/rlman_48.html
+
+  char *buf;
+
+  // do we need this?
+    //rl_completion_append_character = '\0';
+
+  //rl_bind_key('\t', rl_complete);
+    rl_attempted_completion_function = my_completion;
+
+    while((buf = readline("\n>> "))!=NULL) {
+      printf("input: [%s]\n",buf);
+
+      // if (rl_attempted_completion_function) {
+      //   // read category
+      //   printf("cat [%s]\n",buf);
+
+      //   rl_bind_key('\t', NULL);
+      //   rl_attempted_completion_function = NULL;
+
+      // } else {
+      //   // read link
+      //   printf("lnk [%s]\n",buf);
+
+      //   rl_bind_key('\t',rl_complete);
+      //   rl_attempted_completion_function = my_completion;
+      // }
+    }
+
+    free(buf);
+}
+
+
+static char** my_completion( const char * text , int start,  int end)
+{
+    char **matches;
+
+    printf("\n\n### Looking for matches [%s]\n", text);
+
+    matches = (char **)NULL;
+
+    if (start == 0)
+        matches = rl_completion_matches ((char*)text, &my_generator);
+    // else
+    //rl_bind_key('\t',rl_insert);
+
+    return (matches);
+
+}
+
+//char* cmd [] ={ "hello", "world", "hell" ,"word", "quit", " ", "\r"};
+
+std::vector<std::string> completions = {"hello", "world", "hell" ,"word", "quit"};
+
+char* my_generator(const char* text, int state)
+{
+  static int list_index, len;
+  const char *name;
+
+  if (!state) {
+    list_index = 0;
+    len = strlen (text);
+  }
+
+  while (list_index < (int) completions.size()) { //@FIXME nasty cast
+    name = completions[list_index].c_str();
+    list_index++;
+
+    if (strncmp (name, text, len) == 0) {
+      return strdup(name);
+    }
+  }
+
+  return ((char *)NULL);
+
+
+
+
+  /*
+    for (int i = list_index; i < (int) completions.size(); i++) { // @FIXME nasty cast
+      list_index++;
+      auto c = completions[list_index];
+      const char *name = c.c_str();
+
+      printf("\n>>> now at %d", list_index);
+
+      //printf("\nchecking %s against %s\n", name, text);
+      if (strncmp (name, text, len) == 0) {
+        //        printf("FOUND %s\n", name);
+        return strdup(name); // @FIXME leak
+      }
+    }
+
+
+  */
+    // while ((name = cmd[list_index]) && strncmp(cmd[list_index], "\r", 1) != 0)  {
+    //     list_index++;
+    //     printf("\n>>> now at %d", list_index);
+
+    //     if (strncmp (name, text, len) == 0)
+    //       return (strdup(name));
+    // }
+
+    // If no names matched, then return NULL.
+    return ((char *)NULL);
+
+}

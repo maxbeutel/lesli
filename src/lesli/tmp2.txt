@@ -1,0 +1,135 @@
+#include <string>
+#include <sstream>
+#include <fstream>
+
+#include <vector>
+#include <assert.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+
+#include <lesli/util.cpp>
+
+void ac_init();
+
+int main() {
+  std::ifstream infile("/Users/max/Desktop/links.org");
+
+  std::string line;
+  std::string prefix("* ");
+
+  struct TrieNode *root = newNode();
+
+  // insert(root, "singapore");
+  // insert(root, "sincity");
+  // insert(root, "sinister");
+
+  //  completion(root, "sin");
+
+  // printf("=========\n");
+
+  while (std::getline(infile, line)) {
+    const char *ptr = strstr(line.c_str(), prefix.c_str());
+
+    if (ptr != NULL) {
+      char *headline = strdup(ptr + prefix.length()); // @FIXME free
+      lcString(headline); // @FIXME trie structure can only work with lowercase chars
+
+      printf("> detected headline: |%s|\n", headline);
+
+      insert(root, headline);
+
+      assert(search(root, headline) == true && "Failed to find inserted headline in trie");
+    }
+  }
+
+  // testing
+  //std::vector<char> a;
+  //std::vector<std::string> b;
+
+  //  walk(root, a, b); // b contains now all words (@FIXME whitespaces are replaced with t though)
+
+  if (search(root, "xx")) {
+    printf("xx - Ok\n");
+  } else {
+    printf("xx - Not found\n");
+  }
+
+  if (search(root, "sin")) {
+    printf("sin - Ok\n");
+  } else {
+    printf("sin - Not found\n");
+  }
+
+  if (search(root, "singapore")) {
+    printf("singapore - Ok\n");
+  } else {
+    printf("singapore - Not found\n");
+  }
+  // end
+
+  ac_init();
+
+  return 0;
+}
+
+// autocomplete example:
+std::vector<std::string> completions = {"hello", "world", "hell" ,"word", "quit"};
+
+static char** my_completion(const char*, int ,int);
+char* my_generator(const char*,int);
+
+void ac_init()
+{
+  // http://cc.byexamples.com/2008/06/16/gnu-readline-implement-custom-auto-complete/
+  // http://www.delorie.com/gnu/docs/readline/rlman_48.html
+
+  char *buf;
+
+  // don't append space at the end of the completion
+  rl_completion_append_character = '\0';
+  rl_attempted_completion_function = my_completion;
+
+  while ((buf = readline("\n>>")) != NULL) {
+    printf("input: [%s]\n",buf);
+  }
+
+  free(buf);
+}
+
+static char** my_completion( const char * text , int start,  int end)
+{
+  char **matches;
+
+  matches = (char **)NULL;
+
+  if (start == 0) {
+    matches = rl_completion_matches ((char*)text, &my_generator);
+  }
+
+  return matches;
+}
+
+char* my_generator(const char* text, int state)
+{
+  static int list_index, len;
+  const char *name;
+
+  if (!state) {
+    list_index = 0;
+    len = strlen(text);
+  }
+
+  while (list_index < (int) completions.size()) { //@FIXME nasty cast
+    name = completions[list_index].c_str();
+    list_index++;
+
+    if (strncmp (name, text, len) == 0) {
+      return strdup(name);
+    }
+  }
+
+  return (char *) NULL;
+}
